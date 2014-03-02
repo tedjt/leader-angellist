@@ -1,0 +1,24 @@
+{
+  "name": "leader-angellist",
+  "version": "1.0.0",
+  "repository": "git://github.com/tedjt/leader-angelist.git",
+  "license": "MIT",
+  "description": "A Angellist API plugin for leader to extract company information",
+  "keywords": [
+    "leader",
+    "Angelist",
+    "company",
+    "middleware"
+  ],
+  "dependencies": {
+    "debug": "~0.7.4",
+    "extend": "~1.2.1",
+    "obj-case": "git://github.com/tedjt/obj-case",
+    "flatnest": "git://github.com/tedjt/node-flatnest",
+    "angel.co": "~1.1.0"
+  },
+  "devDependencies": {
+    "mocha": "~1.15.1",
+    "should": "~3.1.2"
+  }
+}
