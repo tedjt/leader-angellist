@@ -4,10 +4,7 @@ var should = require('should');
 var plugin = require('..');
 
 describe('leader-angelist', function () {
-  var angelist = plugin({
-    clientId: 'c4a625064f87a49b248aeb9fb0b56455',
-    token: 'd8f1948777cd42b8e2cafd8af38acf1e'
-  });
+  var angelist = plugin();
 
   it('should wait if theres no company name', function () {
     var context = {}, person = {};

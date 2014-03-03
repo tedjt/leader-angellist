@@ -32,6 +32,7 @@ module.exports.test = {
  */
 
 function middleware (options) {
+  options = options || {};
   var angel = new Angel(options.clientId, options.token);
   return function angelList (person, context, next) {
     var query = getSearchTerm(person, context);
