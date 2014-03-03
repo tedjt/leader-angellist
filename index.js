@@ -25,7 +25,7 @@ module.exports.test = {
 };
 
 /**
- * Create a Fullcontact name API leader plugin.
+ * Create a AngelList leader plugin.
  *
  * @return {String} apiKey
  * @return {Function}
