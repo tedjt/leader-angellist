@@ -1,8 +1,11 @@
 var debug = require('debug')('leader:angelist');
 var extend = require('extend');
+var defaults = require('defaults');
 var objCase = require('obj-case');
 var flatnest = require('flatnest');
 var Levenshtein = require('levenshtein');
+var request = require('request');
+var cheerio = require('cheerio');
 var Angel = require('angel.co');
 
 /**
@@ -17,7 +20,8 @@ module.exports = function (options) {
 };
 
 module.exports.test = {
-  validateName: validateName
+  validateName: validateName,
+  scrapeCompany: scrapeCompany
 };
 
 /**
@@ -32,7 +36,7 @@ function middleware (options) {
   return function fullcontactPersonApi (person, context, next) {
     var query = getSearchTerm(person, context);
     if (!query) return next();
-    debug('query angellist with query %s ..', query);
+    debug('query angelList with query %s ..', query);
     angel.search.search({
       query: query,
       type: 'Startup'
@@ -47,19 +51,67 @@ function middleware (options) {
       var id = body[0].id;
       angel.startups.get(body[0].id, function(err, body) {
         if (err) return next(err);
-        var body = parseJson(body);
-        if (body instanceof Error) return next(err);
-        if (validateName(body, query)) {
-          extend(true, context, { angelist: { company: { api : body }}});
-          details(body, person);
-          debug('Got Angellist company profile for query %s', query);
+        var companyBody = parseJson(body);
+        if (companyBody instanceof Error) return next(err);
+        if (validateName(companyBody, query)) {
+          extend(true, context, { angelist: { company: { api : companyBody }}});
+          details(companyBody, person);
+          debug('Got angelList company profile for query %s', query);
+          var angelListUrl = objCase(person, 'company.angelList.url');
+          if (angelListUrl) {
+            scrapeCompany(angelListUrl, options.headers, function(error, funding) {
+              if (error) return next(error);
+              if (!funding) return next();
+              extend(true, context, { angelist: { company: { scrape : funding }}});
+              if (funding.total) person.company.funding = funding.total;
+              if (funding.rounds) person.company.angelList.funding_rounds = funding.rounds;
+              return next();
+            });
+          } else {
+            return next();
+          }
         } else {
-          debug('Skipping Angellist company profile for query %s with name: %s', query, body.name);
+          debug('Skipping angelList company profile for query %s with name: %s', query, body.name);
+          next();
         }
-        next();
       });
     });
   };
+  //$('.startup_round').each(function(i, e) { console.log(e); console.log('type: %s, amount: %s', $(e).find('.type').text(), $(e).find('.raised').text()); })
+  //$('.startup_round').each(function(i, e) { console.log('type: %s, amount: %s', $(e).find('.type').text().trim(), $(e).find('.raised').text().trim()); })
+}
+
+function scrapeCompany(url, headers, cb) {
+  headers =  defaults(headers || {}, { // disguise headers
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.71 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language' :'en-US,en;q=0.8',
+    'Cache-Control'   :'max-age=0'
+  });
+  var req = { url: url, headers: headers };
+  request(req, function (error, response, body) {
+    if (error) return cb(error);
+    if (response.statusCode != 200) return cb(new Error('bad status code %d', response.statusCode));
+    $ = cheerio.load(body);
+    var funding = [];
+    $('.startup_round').each(function(i, e) { 
+      funding.push({
+        type: $(e).find('.type').text().trim(),
+        amount: $(e).find('.raised').text().trim()
+      });
+    });
+    if (funding.length) {
+      var totalFunding = funding.reduce(function(p, c, i, arr) {
+        return p + parseInt(c.amount.replace(/[$,]/g, ''), 10);
+      }, 0);
+      return cb(null, {
+        total: totalFunding,
+        rounds: funding
+      });
+    } else {
+      return cb(null, null);
+    }
+  });
 }
 
 function parseJson(body) {
@@ -82,7 +134,7 @@ function validateName(data, query) {
 }
 
 /**
- * Copy the angellist company `profile` details to the `person.company`.
+ * Copy the angelList company `profile` details to the `person.company`.
  *
  * @param {Object} profile
  * @param {Object} person
@@ -95,8 +147,8 @@ function details (profile, person) {
     'image_url': 'logo_url',
     'description': 'product_desc',
     'concept': 'high_concept',
-    'angellist.followers': 'follower_count',
-    'angellist.url': 'angellist_url',
+    'angelList.followers': 'follower_count',
+    'angelList.url': 'angellist_url',
     'website': 'company_url',
     'crunchbase.url': 'crunchbase_url',
     'twitter.url': 'twitter_url',
@@ -135,7 +187,7 @@ function wait (person, context) {
 }
 
 /**
- * Get the Angellist search term.
+ * Get the angelList search term.
  *
  * @param {Object} person
  * @param {Object} context
