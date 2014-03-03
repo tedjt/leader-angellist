@@ -33,7 +33,7 @@ module.exports.test = {
 
 function middleware (options) {
   var angel = new Angel(options.clientId, options.token);
-  return function fullcontactPersonApi (person, context, next) {
+  return function angelList (person, context, next) {
     var query = getSearchTerm(person, context);
     if (!query) return next();
     debug('query angelList with query %s ..', query);
@@ -77,8 +77,6 @@ function middleware (options) {
       });
     });
   };
-  //$('.startup_round').each(function(i, e) { console.log(e); console.log('type: %s, amount: %s', $(e).find('.type').text(), $(e).find('.raised').text()); })
-  //$('.startup_round').each(function(i, e) { console.log('type: %s, amount: %s', $(e).find('.type').text().trim(), $(e).find('.raised').text().trim()); })
 }
 
 function scrapeCompany(url, headers, cb) {
