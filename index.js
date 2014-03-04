@@ -90,10 +90,11 @@ function scrapeCompany(url, headers, cb) {
   var req = { url: url, headers: headers };
   request(req, function (error, response, body) {
     if (error) return cb(error);
+    if (!response) return cb(new Error('No response received'));
     if (response.statusCode != 200) return cb(new Error('bad status code %d', response.statusCode));
     $ = cheerio.load(body);
     var funding = [];
-    $('.startup_round').each(function(i, e) { 
+    $('.startup_round').each(function(i, e) {
       funding.push({
         type: $(e).find('.type').text().trim(),
         amount: $(e).find('.raised').text().trim()
