@@ -1,4 +1,4 @@
-var debug = require('debug')('leader:angelist');
+var debug = require('debug')('leader:angelList');
 var extend = require('extend');
 var defaults = require('defaults');
 var objCase = require('obj-case');
@@ -55,7 +55,7 @@ function middleware (options) {
         var companyBody = parseJson(body);
         if (companyBody instanceof Error) return next(err);
         if (validateName(companyBody, query)) {
-          extend(true, context, { angelist: { company: { api : companyBody }}});
+          extend(true, context, { angelList: { company: { api : companyBody }}});
           details(companyBody, person);
           debug('Got angelList company profile for query %s', query);
           var angelListUrl = objCase(person, 'company.angelList.url');
@@ -63,7 +63,7 @@ function middleware (options) {
             scrapeCompany(angelListUrl, options.headers, function(error, funding) {
               if (error) return next(error);
               if (!funding) return next();
-              extend(true, context, { angelist: { company: { scrape : funding }}});
+              extend(true, context, { angelList: { company: { scrape : funding }}});
               if (funding.total) person.company.funding = funding.total;
               if (funding.rounds) person.company.angelList.funding_rounds = funding.rounds;
               return next();
