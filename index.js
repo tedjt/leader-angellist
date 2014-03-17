@@ -91,7 +91,7 @@ function scrapeCompany(url, headers, cb) {
   request(req, function (error, response, body) {
     if (error) return cb(error);
     if (!response) return cb(new Error('No response received'));
-    if (response.statusCode != 200) return cb(new Error('bad status code %d', response.statusCode));
+    if (response.statusCode != 200) return cb(new Error('AngelList bad status code ' + response.statusCode));
     $ = cheerio.load(body);
     var funding = [];
     $('.startup_round').each(function(i, e) {
