@@ -33,52 +33,96 @@ module.exports.test = {
 
 function middleware (options) {
   options = options || {};
-  var angel = new Angel(options.clientId, options.token);
+  var credentialIndex = 0;
+  var credentials;
+  if (options.credentials) {
+    credentials = options.credentials[0];
+  } else if (options.clientId && options.token) {
+    credentials = options;
+  }
+  var angel = credentials ? new Angel(credentials.clientId, credentials.token) : new Angel();
   return function angelList (person, context, next) {
     var query = getSearchTerm(person, context);
     if (!query) return next();
     debug('query angelList with query %s ..', query);
-    angel.search.search({
-      query: query,
-      type: 'Startup'
-    }, function(err, body) {
-      if (err) return next(err);
-      var body = parseJson(body);
-      if (body instanceof Error) return next(err);
-      if (body.length < 1) {
-        debug('no results found for %s', query);
-        return next();
-      }
-      var id = body[0].id;
-      angel.startups.get(body[0].id, function(err, body) {
-        if (err) return next(err);
-        var companyBody = parseJson(body);
-        if (companyBody instanceof Error) return next(err);
-        if (validateName(companyBody, query)) {
-          extend(true, context, { angelList: { company: { api : companyBody }}});
-          details(companyBody, person);
-          debug('Got angelList company profile for query %s', query);
-          var angelListUrl = objCase(person, 'company.angelList.url');
-          if (angelListUrl) {
-            scrapeCompany(angelListUrl, options.headers, function(error, funding) {
-              if (error) return next(error);
-              if (!funding) return next();
-              extend(true, context, { angelList: { company: { scrape : funding }}});
-              if (funding.total) person.company.funding = funding.total;
-              if (funding.rounds) person.company.angelList.funding_rounds = funding.rounds;
-              return next();
-            });
+    var attempts = 0;
+    var attemptFn = function() {
+      tryAngellist(options, angel, query, person, context, function(err, rateLimited) {
+        if (rateLimited && options.credentials && attempts < options.credentials.length - 1) {
+          debug('Angelist returned error for query %s ..', query);
+          attempts ++;
+          // bump credeti
+          credentialIndex++;
+          credentials = options.credentials[credentialIndex % options.credentials.length];
+          angel = new Angel(credentials.clientId, credentials.token);
+          // only retry if we are sure its a rate limit
+          if (rateLimited.error === 'over_limit') {
+            debug('retrying angelList with query %s ..', query);
+            return attemptFn();
           } else {
-            return next();
+            return next(err);
           }
         } else {
-          debug('Skipping angelList company profile for query %s with name: %s', query, body.name);
-          next();
+          return next(err);
         }
       });
-    });
+    };
+    // first attempt
+    attemptFn();
   };
 }
+
+function tryAngellist(options, angel, query, person, context, next) {
+  angel.search.search({
+    query: query,
+    type: 'Startup'
+  }, function(err, resBody) {
+    if (err) return next(err);
+    var body = parseJson(resBody);
+    if (body instanceof Error) return next(err);
+    if (!body) {
+      debug('no results found for %s', query);
+      return next();
+    }
+    if (body.error) {
+      debug('error received %j', body);
+      return next(null, body);
+    }
+    if (body.length < 1) {
+      debug('no results found for %s', query);
+      return next();
+    }
+    var id = body[0].id;
+    angel.startups.get(body[0].id, function(err, body) {
+      if (err) return next(err);
+      var companyBody = parseJson(body);
+      if (companyBody instanceof Error) return next(err);
+      if (validateName(companyBody, query)) {
+        extend(true, context, { angelList: { company: { api : companyBody }}});
+        details(companyBody, person);
+        debug('Got angelList company profile for query %s', query);
+        var angelListUrl = objCase(person, 'company.angelList.url');
+        if (angelListUrl) {
+          scrapeCompany(angelListUrl, options.headers, function(error, funding) {
+            if (error) return next(error);
+            if (!funding) return next();
+            extend(true, context, { angelList: { company: { scrape : funding }}});
+            if (funding.total) person.company.funding = funding.total;
+            if (funding.rounds) person.company.angelList.funding_rounds = funding.rounds;
+            return next();
+          });
+        } else {
+          return next();
+        }
+      } else {
+        debug('Skipping angelList company profile for query %s with name: %s', query, body.name);
+        next();
+      }
+    });
+  });
+}
+
+
 
 function scrapeCompany(url, headers, cb) {
   headers =  defaults(headers || {}, { // disguise headers
