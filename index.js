@@ -1,9 +1,9 @@
 var debug = require('debug')('leader:angelList');
 var extend = require('extend');
 var defaults = require('defaults');
-var objCase = require('obj-case');
+var leaderUtils = require('leader-utils');
+var objCase = leaderUtils.objcase;
 var flatnest = require('flatnest');
-var Levenshtein = require('levenshtein');
 var request = require('request');
 var cheerio = require('cheerio');
 var Angel = require('angel.co');
@@ -168,11 +168,8 @@ function parseJson(body) {
 
 function validateName(data, query) {
   var name = data.name;
-  if (name) {
-    var lev = new Levenshtein(name, query);
-    if (lev.distance < 10) {
-      return true;
-    }
+  if (data.name) {
+    return leaderUtils.accurateTitle(data.name, query);
   }
   return false;
 }
@@ -239,34 +236,8 @@ function wait (person, context) {
  */
 
 function getSearchTerm (person, context) {
-  var company = getCompanyName(person, context);
-  var domain = getInterestingDomain(person, context);
-  return company || domain;
-}
-
-/**
- * Get the company name.
- *
- * @param {Object} context
- * @param {Object} person
- * @return {String}
- */
-
-function getCompanyName (person, context) {
-  return objCase(person, 'company.name');
-}
-
-/**
- * Get an interesting domain.
- *
- * @param {Object} context
- * @param {Object} person
- * @return {String}
- */
-
-function getInterestingDomain (person, context) {
-  if (person.domain && !person.domain.disposable && !person.domain.personal)
-    return person.domain.name;
-  else
-    return null;
+  var company = leaderUtils.getCompanyName(person);
+  var domain = leaderUtils.getInterestingDomain(person);
+  var companyDomain = leaderUtils.getCompanyDomain(person);
+  return companyDomain || domain || company;
 }

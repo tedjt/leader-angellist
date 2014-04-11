@@ -13,10 +13,9 @@
   "dependencies": {
     "debug": "~0.7.4",
     "extend": "~1.2.1",
-    "obj-case": "git://github.com/tedjt/obj-case",
     "flatnest": "git://github.com/tedjt/node-flatnest",
+    "leader-utils": "git://github.com/tedjt/leader-utils",
     "angel.co": "~1.1.0",
-    "levenshtein": "~1.0.4",
     "request": "~2.34.0",
     "cheerio": "~0.13.1",
     "defaults": "~1.0.0"
