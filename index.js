@@ -97,7 +97,8 @@ function tryAngellist(options, angel, query, person, context, next) {
       if (err) return next(err);
       var companyBody = parseJson(body);
       if (companyBody instanceof Error) return next(err);
-      if (validateName(companyBody, query)) {
+      var isDomain = (query === getDomainQuery(person));
+      if (validateName(companyBody, query, isDomain)) {
         extend(true, context, { angelList: { company: { api : companyBody }}});
         details(companyBody, person);
         debug('Got angelList company profile for query %s', query);
@@ -166,12 +167,13 @@ function parseJson(body) {
   }
 }
 
-function validateName(data, query) {
-  var name = data.name;
-  if (data.name) {
-    return leaderUtils.accurateTitle(data.name, query);
+function validateName(data, query, isDomain) {
+  if (isDomain && data.company_url) {
+    // require domain to be the same...
+    return leaderUtils.getCleanDomain(data.company_url) === query;
+  } else {
+    return data.name && leaderUtils.accurateTitle(data.name, query);
   }
-  return false;
 }
 
 /**
@@ -240,4 +242,10 @@ function getSearchTerm (person, context) {
   var domain = leaderUtils.getInterestingDomain(person);
   var companyDomain = leaderUtils.getCompanyDomain(person);
   return companyDomain || domain || company;
+}
+
+function getDomainQuery (person) {
+  var domain = leaderUtils.getInterestingDomain(person);
+  var companyDomain = leaderUtils.getCompanyDomain(person);
+  return companyDomain || domain;
 }

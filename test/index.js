@@ -4,6 +4,7 @@ var should = require('should');
 var plugin = require('..');
 
 describe('leader-angellist', function () {
+  this.timeout(5000);
   var angelList = plugin();
 
   it('should wait if theres no company name', function () {
